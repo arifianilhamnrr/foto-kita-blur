@@ -1,81 +1,87 @@
+import os
+import urllib.request
+
 import cv2
 import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 
-#detect tangan
-mp_hands = mp.solutions.hands
-
-hands = mp_hands.Hands(
-    static_image_mode=False,
-    max_num_hands=1,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "hand_landmarker.task")
+MODEL_URL = (
+    "https://storage.googleapis.com/mediapipe-models/hand_landmarker/"
+    "hand_landmarker/float16/1/hand_landmarker.task"
 )
+CAMERA_INDEX = int(os.environ.get("CAMERA_INDEX", "0"))
+
+
+def ensure_model():
+    if os.path.exists(MODEL_PATH):
+        return
+    print("Downloading hand model…")
+    urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+
 
 def finger_up(tip, pip, landmarks):
     return landmarks[tip].y < landmarks[pip].y
 
 
 def is_peace(landmarks):
-
     index_up = finger_up(8, 6, landmarks)
     middle_up = finger_up(12, 10, landmarks)
-
     ring_up = finger_up(16, 14, landmarks)
     pinky_up = finger_up(20, 18, landmarks)
+    return index_up and middle_up and not ring_up and not pinky_up
 
-    return (
-        index_up
-        and middle_up
-        and not ring_up
-        and not pinky_up
+
+def main():
+    ensure_model()
+
+    options = vision.HandLandmarkerOptions(
+        base_options=python.BaseOptions(model_asset_path=MODEL_PATH),
+        num_hands=1,
+        min_hand_detection_confidence=0.5,
+        min_hand_presence_confidence=0.5,
+        min_tracking_confidence=0.5,
     )
+    detector = vision.HandLandmarker.create_from_options(options)
 
-#open camera
-cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(CAMERA_INDEX)
+    if not cap.isOpened():
+        raise SystemExit(f"Kamera {CAMERA_INDEX} tidak bisa dibuka.")
 
-while True:
+    print("Foto Kita Blur — tunjuk ✌️ biar layar blur. ESC untuk keluar.")
 
-    success, frame = cap.read()
+    while True:
+        success, frame = cap.read()
+        if not success:
+            break
 
-    if not success:
-        break
+        frame = cv2.flip(frame, 1)
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+        result = detector.detect(mp_image)
 
-    frame = cv2.flip(frame, 1)
+        peace_detected = False
+        if result.hand_landmarks:
+            for hand_landmarks in result.hand_landmarks:
+                if is_peace(hand_landmarks):
+                    peace_detected = True
+                    break
 
-    rgb = cv2.cvtColor(
-        frame,
-        cv2.COLOR_BGR2RGB
-    )
+        if peace_detected:
+            frame = cv2.GaussianBlur(frame, (61, 61), 0)
+            cv2.putText(
+                frame, "foto kita blur ~", (24, 48),
+                cv2.FONT_HERSHEY_SIMPLEX, 1.1, (255, 255, 255), 2, cv2.LINE_AA,
+            )
 
-    hand_result = hands.process(rgb)
+        cv2.imshow("Foto Kita Blur", frame)
+        if cv2.waitKey(1) & 0xFF == 27:
+            break
 
-    peace_detected = False
+    cap.release()
+    cv2.destroyAllWindows()
 
-    if hand_result.multi_hand_landmarks:
 
-        for hand_landmarks in hand_result.multi_hand_landmarks:
-
-            if is_peace(hand_landmarks.landmark):
-                peace_detected = True
-                break
-
-    #blur efek
-
-    if peace_detected:
-
-        frame = cv2.GaussianBlur(
-            frame,
-            (61, 61),
-            0
-        )
-
-    cv2.imshow(
-        "Peace Blur",
-        frame
-    )
-
-    if cv2.waitKey(1) & 0xFF == 27:
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+if __name__ == "__main__":
+    main()

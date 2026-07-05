@@ -1,0 +1,1956 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2a1f3d">
+<title>foto kita blur ~</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='70' x='18' font-size='52'>✌️</text></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #1a1228; color: #fff;
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  #stage { position: fixed; inset: 0; overflow: hidden; }
+  #video {
+    transform: scaleX(-1);
+    width: 100%; height: 100%; object-fit: cover;
+    transition: filter 0.35s ease;
+  }
+  #video.blur { filter: blur(10px) saturate(0.85) brightness(0.92); }
+  #canvas {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 5;
+  }
+  #flash {
+    position: fixed; inset: 0; background: #fff; z-index: 25;
+    opacity: 0; pointer-events: none; transition: opacity 0.08s;
+  }
+  #flash.on { opacity: 0.85; }
+
+  #countdown {
+    position: fixed; inset: 0; z-index: 22; display: flex;
+    align-items: center; justify-content: center;
+    font-size: 120px; font-weight: 700; font-family: system-ui, sans-serif;
+    text-shadow: 0 4px 40px rgba(0,0,0,0.8);
+    opacity: 0; pointer-events: none; transition: opacity 0.15s;
+  }
+  #countdown.show { opacity: 1; }
+
+  #session-banner {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 18; pointer-events: none; text-align: center;
+    font-family: system-ui, sans-serif;
+    opacity: 0; transition: opacity 0.25s;
+    padding: 20px 32px; border-radius: 20px;
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(8px);
+    border: 2px solid rgba(201,179,255,0.4);
+  }
+  #session-banner.show { opacity: 1; }
+  #session-banner .big { font-size: 42px; display: block; margin-bottom: 6px; }
+  #session-banner .sub { font-size: 16px; opacity: 0.8; }
+
+  #lyric {
+    position: fixed; left: 50%; bottom: 88px; top: auto;
+    transform: translateX(-50%) scale(0.96);
+    z-index: 8; pointer-events: none; text-align: center;
+    opacity: 0; transition: opacity 0.4s, transform 0.4s;
+    padding: 12px 24px; max-width: 72vw;
+    text-shadow: 0 2px 24px rgba(0,0,0,0.7);
+  }
+  #lyric.show { opacity: 1; transform: translateX(-50%) scale(1); }
+  #lyric .line1 {
+    font-size: clamp(28px, 7vw, 48px); font-weight: 400;
+    letter-spacing: 1px; color: rgba(255,255,255,0.95);
+  }
+  #lyric .line2 {
+    margin-top: 10px; font-size: clamp(14px, 3.5vw, 18px);
+    font-style: italic; opacity: 0.75; font-family: system-ui, sans-serif;
+    transition: opacity 0.35s;
+  }
+  #lyric .line2:empty { display: none; }
+  #lyric.session-mode .line1 { font-size: clamp(26px, 6.5vw, 44px); }
+  #lyric .hl { color: #d4b8ff; font-weight: 700; text-shadow: 0 0 18px rgba(201,179,255,0.8); }
+  #lyric.snap-pulse .hl {
+    animation: blur-pop 0.45s ease-out;
+  }
+  @keyframes blur-pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.18); color: #fff; text-shadow: 0 0 28px rgba(255,255,255,0.95); }
+    100% { transform: scale(1); }
+  }
+  #lyric.session-mode { opacity: 1 !important; transform: translateX(-50%) scale(1) !important; }
+
+  #start-screen {
+    position: fixed; inset: 0; z-index: 30;
+    background: radial-gradient(ellipse at 50% 20%, #4a3568 0%, #1a1228 65%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px; padding: 24px; text-align: center;
+  }
+  h1 {
+    font-size: clamp(32px, 8vw, 52px); font-weight: 400;
+    letter-spacing: 2px; color: rgba(255,255,255,0.92);
+  }
+  h1 span { opacity: 0.55; font-style: italic; }
+  .artist { font-family: system-ui, sans-serif; font-size: 13px;
+    letter-spacing: 3px; text-transform: uppercase; opacity: 0.45; }
+  .desc {
+    max-width: 420px; line-height: 1.75; opacity: 0.8;
+    font-family: system-ui, sans-serif; font-size: 15px;
+  }
+  .desc b { color: #d4b8ff; font-weight: 600; }
+  #start-btn {
+    margin-top: 8px; padding: 14px 40px; font-size: 16px;
+    font-family: system-ui, sans-serif; font-weight: 600;
+    background: rgba(255,255,255,0.14); color: #fff;
+    border: 1px solid rgba(255,255,255,0.25); border-radius: 40px;
+    cursor: pointer; transition: transform 0.15s, background 0.15s;
+  }
+  #start-btn:hover:not(:disabled) { transform: scale(1.04); background: rgba(255,255,255,0.22); }
+  #start-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  #hud {
+    position: fixed; top: 14px; left: 14px; z-index: 12;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+    padding: 10px 14px; border-radius: 12px;
+    font-family: system-ui, sans-serif; font-size: 13px; line-height: 1.5;
+  }
+  #status { font-size: 15px; }
+  #status.peace { color: #c9b3ff; }
+  #status.clear { color: #8fd4a0; }
+  #status.session { color: #ffd93d; }
+  #status.palm { color: #b8d4ff; }
+  #audio-hint { font-size: 11px; opacity: 0.55; margin-top: 4px; }
+
+  #toolbar {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 12; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    justify-content: center; padding: 10px 14px; border-radius: 40px;
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(12px);
+    font-family: system-ui, sans-serif; font-size: 13px;
+  }
+  .blur-ctrl {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 20px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    cursor: default;
+  }
+  .blur-ctrl .blur-icon { font-size: 14px; opacity: 0.85; }
+  #blur-range { width: 72px; accent-color: #c9b3ff; cursor: pointer; }
+  #blur-value {
+    min-width: 20px; font-size: 12px; font-weight: 600;
+    color: #d4b8ff; text-align: right;
+  }
+  .tb-btn.picker {
+    width: auto; min-width: 40px; padding: 0 12px; border-radius: 20px;
+    font-size: 15px; display: flex; align-items: center; gap: 5px;
+  }
+  .tb-btn.picker .lbl {
+    font-size: 11px; max-width: 72px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .tb-btn {
+    width: 40px; height: 40px; border: none; border-radius: 50%;
+    background: rgba(255,255,255,0.14); color: #fff; font-size: 18px;
+    cursor: pointer; transition: transform 0.12s, background 0.12s;
+  }
+  .tb-btn:hover { transform: scale(1.1); background: rgba(255,255,255,0.25); }
+  .tb-btn.active { background: rgba(201,179,255,0.45); outline: 2px solid #fff; }
+  .tb-btn.snap {
+    width: 52px; height: 52px; font-size: 22px;
+    background: rgba(255,255,255,0.9); color: #1a1228;
+  }
+  .tb-btn.snap:hover { background: #fff; }
+  #vol-range { width: 70px; accent-color: #c9b3ff; }
+
+  #gallery-panel {
+    position: fixed; right: 12px; top: 50%; transform: translateY(-50%);
+    z-index: 14; width: 108px; max-height: 70vh; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 8px; border-radius: 14px;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(10px);
+    font-family: system-ui, sans-serif;
+  }
+  #gallery-panel:empty { display: none; }
+  #gallery-panel .g-title {
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    opacity: 0.55; text-align: center; padding-bottom: 4px;
+  }
+  .shot {
+    position: relative; border-radius: 8px; overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.2); cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .shot:hover { border-color: #c9b3ff; transform: scale(1.04); }
+  .shot img, .shot video { display: block; width: 100%; height: auto; }
+  .shot.video-shot { border-color: rgba(201,179,255,0.45); }
+  .shot.strip-shot { border-color: rgba(201,179,255,0.55); }
+  .shot .dl {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.55); font-size: 10px; text-align: center;
+    padding: 3px; opacity: 0; transition: opacity 0.15s;
+  }
+  .shot:hover .dl { opacity: 1; }
+
+  .tip {
+    margin-top: 4px; padding: 12px 16px; border-radius: 14px; max-width: 400px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+    font-family: system-ui, sans-serif; font-size: 12px; line-height: 1.6; text-align: left;
+  }
+  .tip code {
+    display: inline-block; margin-top: 4px; padding: 4px 10px; border-radius: 8px;
+    background: rgba(0,0,0,0.35); color: #b8d4ff; font-size: 13px; word-break: break-all;
+  }
+  .hidden { display: none !important; }
+  #audio-file { display: none; }
+
+  #modal-backdrop {
+    position: fixed; inset: 0; z-index: 28;
+    background: rgba(10, 6, 20, 0.62);
+    backdrop-filter: blur(8px);
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.28s ease;
+  }
+  #modal-backdrop.show { opacity: 1; pointer-events: auto; }
+
+  #picker-modal {
+    width: min(500px, 100%);
+    max-height: 82vh;
+    background: linear-gradient(168deg, #3d2f58 0%, #221a34 55%, #1a1228 100%);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-bottom: none;
+    border-radius: 26px 26px 0 0;
+    box-shadow: 0 -8px 48px rgba(0,0,0,0.45);
+    transform: translateY(105%);
+    transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+    overflow: hidden;
+    font-family: system-ui, sans-serif;
+  }
+  #modal-backdrop.show #picker-modal { transform: translateY(0); }
+
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 22px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .modal-header h2 {
+    font-family: Georgia, serif; font-weight: 400; font-size: 20px;
+    letter-spacing: 0.3px;
+  }
+  .modal-close {
+    width: 36px; height: 36px; border: none; border-radius: 50%;
+    background: rgba(255,255,255,0.1); color: #fff; font-size: 18px;
+    cursor: pointer; transition: background 0.15s, transform 0.15s;
+  }
+  .modal-close:hover { background: rgba(255,255,255,0.2); transform: scale(1.06); }
+
+  #modal-body {
+    padding: 8px 18px 28px; overflow-y: auto; max-height: calc(82vh - 72px);
+  }
+  .modal-desc {
+    font-size: 12px; opacity: 0.6; line-height: 1.5;
+    padding: 0 4px 14px; text-align: center;
+  }
+
+  .theme-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+  }
+  .theme-card {
+    position: relative; border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 18px; padding: 12px; cursor: pointer;
+    background: rgba(255,255,255,0.04); color: #fff;
+    transition: border-color 0.18s, transform 0.18s, background 0.18s;
+    text-align: left; width: 100%;
+  }
+  .theme-card:hover { transform: translateY(-2px); background: rgba(255,255,255,0.08); }
+  .theme-card.selected {
+    border-color: #d4b8ff;
+    background: rgba(201,179,255,0.12);
+    box-shadow: 0 0 0 1px rgba(201,179,255,0.35);
+  }
+  .theme-card .check {
+    position: absolute; top: 10px; right: 10px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #d4b8ff; color: #1a1228;
+    font-size: 12px; font-weight: 700;
+    display: none; align-items: center; justify-content: center;
+  }
+  .theme-card.selected .check { display: flex; }
+  .theme-swatch {
+    height: 52px; border-radius: 12px; margin-bottom: 10px;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .theme-card .t-icon { font-size: 18px; margin-right: 4px; }
+  .theme-card .t-name {
+    font-size: 13px; font-weight: 600; display: flex; align-items: center;
+  }
+  .theme-card .t-deco {
+    font-size: 11px; opacity: 0.55; margin-top: 4px;
+  }
+
+  .camera-list { display: flex; flex-direction: column; gap: 8px; }
+  .camera-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; border-radius: 16px;
+    border: 2px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    cursor: pointer; transition: border-color 0.18s, background 0.18s;
+    text-align: left; width: 100%;
+    color: #fff; font-size: 14px;
+  }
+  .camera-item:hover { background: rgba(255,255,255,0.08); }
+  .camera-item.selected {
+    border-color: #d4b8ff;
+    background: rgba(201,179,255,0.12);
+  }
+  .camera-item .cam-icon { font-size: 22px; flex-shrink: 0; }
+  .camera-item .cam-label { flex: 1; line-height: 1.35; }
+  .camera-item .cam-check {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.25);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+  }
+  .camera-item.selected .cam-check {
+    background: #d4b8ff; border-color: #d4b8ff; color: #1a1228;
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <video id="video" autoplay playsinline muted></video>
+</div>
+<canvas id="canvas"></canvas>
+<canvas id="capture-canvas" class="hidden"></canvas>
+<canvas id="record-canvas" class="hidden"></canvas>
+<div id="flash"></div>
+<div id="countdown"></div>
+<div id="session-banner">
+  <span class="big">📸</span>
+  <span class="sub" id="session-label">photobooth</span>
+</div>
+
+<div id="lyric">
+  <div class="line1" id="lyric-l1">foto kita blur</div>
+  <div class="line2" id="lyric-l2">kita pernah begitu dekat</div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="status" class="clear">✌️ tunjuk peace sign</div>
+  <div id="audio-hint"></div>
+</div>
+
+<div id="gallery-panel" class="hidden"></div>
+
+<div id="modal-backdrop" class="hidden" aria-hidden="true">
+  <div id="picker-modal" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2 id="modal-title">Pilih</h2>
+      <button type="button" class="modal-close" id="modal-close" aria-label="Tutup">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<div id="toolbar" class="hidden">
+  <button type="button" class="tb-btn picker" id="camera-btn" title="Pilih kamera">
+    📷 <span class="lbl" id="camera-btn-label">kamera</span>
+  </button>
+  <button type="button" class="tb-btn picker" id="theme-btn" title="Pilih tema strip">
+    🎨 <span class="lbl" id="theme-btn-label">tema</span>
+  </button>
+  <label class="blur-ctrl" title="Kekuatan blur saat ✌️ peace sign">
+    <span class="blur-icon">✌️</span>
+    <input type="range" id="blur-range" min="2" max="22" value="10" step="1">
+    <span id="blur-value">10</span>
+  </label>
+  <button class="tb-btn" id="music-btn" title="Musik on/off">🎵</button>
+  <input type="range" id="vol-range" min="0" max="100" value="70" title="Volume">
+  <button class="tb-btn" id="upload-audio-btn" title="Upload lagu sendiri">📁</button>
+  <button class="tb-btn snap" id="snap-btn" title="Jepret foto (3…2…1)">📸</button>
+</div>
+<input type="file" id="audio-file" accept="audio/*">
+
+<div id="start-screen">
+  <p class="artist">inspired by Sal Priadi</p>
+  <h1>foto kita blur <span>~</span></h1>
+  <p class="desc">
+    <b>🖐️ Buka 5 jari</b> → countdown → musik + photobooth otomatis.<br>
+    <b>✌️ Peace sign</b> → blur live. <b>📸</b> jepret manual.
+  </p>
+  <div class="tip">
+    📱 HP (WiFi sama): <code id="phone-url">http://…</code><br>
+    🎵 Taruh lagumu di <code>audio/foto-kita-blur.mp3</code>
+  </div>
+  <button id="start-btn">Izinkan Kamera &amp; Mulai</button>
+</div>
+
+<audio id="bgm" loop preload="auto"></audio>
+
+<script src="vendor/mediapipe/hands/hands.js"></script>
+<script src="vendor/mediapipe/camera_utils/camera_utils.js"></script>
+<script>
+const MEDIAPIPE_BASE = 'vendor/mediapipe/hands/';
+const DEFAULT_AUDIO = 'audio/foto-kita-blur.mp3';
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const captureCanvas = document.getElementById('capture-canvas');
+const captureCtx = captureCanvas.getContext('2d');
+const recordCanvas = document.getElementById('record-canvas');
+const recordCtx = recordCanvas.getContext('2d');
+const RECORD_W = 1280;
+const RECORD_H = 720;
+const startScreen = document.getElementById('start-screen');
+const startBtn = document.getElementById('start-btn');
+const hud = document.getElementById('hud');
+const toolbar = document.getElementById('toolbar');
+const statusEl = document.getElementById('status');
+const audioHint = document.getElementById('audio-hint');
+const lyricEl = document.getElementById('lyric');
+const lyricL1 = document.getElementById('lyric-l1');
+const lyricL2 = document.getElementById('lyric-l2');
+const cameraBtn = document.getElementById('camera-btn');
+const cameraBtnLabel = document.getElementById('camera-btn-label');
+const themeBtn = document.getElementById('theme-btn');
+const themeBtnLabel = document.getElementById('theme-btn-label');
+const modalBackdrop = document.getElementById('modal-backdrop');
+const modalTitle = document.getElementById('modal-title');
+const modalBody = document.getElementById('modal-body');
+const modalClose = document.getElementById('modal-close');
+let cameraList = [];
+const blurRange = document.getElementById('blur-range');
+const blurValueEl = document.getElementById('blur-value');
+const phoneUrlEl = document.getElementById('phone-url');
+const bgm = document.getElementById('bgm');
+const musicBtn = document.getElementById('music-btn');
+const volRange = document.getElementById('vol-range');
+const uploadAudioBtn = document.getElementById('upload-audio-btn');
+const audioFileInput = document.getElementById('audio-file');
+const snapBtn = document.getElementById('snap-btn');
+const flashEl = document.getElementById('flash');
+const countdownEl = document.getElementById('countdown');
+const sessionBanner = document.getElementById('session-banner');
+const sessionLabel = document.getElementById('session-label');
+const galleryPanel = document.getElementById('gallery-panel');
+
+let hands = null;
+let currentStream = null;
+let selectedDeviceId = localStorage.getItem('fkb-camera') || '';
+let peaceActive = false;
+let smoothPeace = 0;
+let openPalmSmooth = 0;
+let musicOn = false;
+let snapping = false;
+let sessionActive = false;
+let sessionCooldownUntil = 0;
+let palmMustRelease = false;
+let shotCount = 0;
+let snapBusy = false;
+let sessionSyncRaf = null;
+let currentLyricCue = null;
+let flashUntil = 0;
+let sessionSnapImgs = [];
+let sessionPhotoUrls = [];
+let sessionStripTheme = null;
+let selectedThemeId = localStorage.getItem('fkb-theme') || 'random';
+let audioHintBase = '';
+let recordingActive = false;
+let recordRaf = null;
+let mediaRecorder = null;
+let recordedChunks = [];
+let audioCtx = null;
+let bgmRecordDest = null;
+
+// Disinkronkan ke audio/foto-kita-blur.mp3 — lirik muncul satu-satu, jepret ~2s & ~8.5s
+const LYRIC_CUES = [
+  { t: 0.00, text: '' },
+  { t: 0.80, text: 'foto kita blur' },
+  { t: 1.95, text: 'foto kita blur', snap: true },
+  { t: 3.85, text: 'kita pernah begitu dekat' },
+  { t: 7.50, text: 'foto kita blur' },
+  { t: 8.55, text: 'foto kita blur', snap: true },
+  { t: 10.00, text: 'kini memorinya ku dekap' },
+];
+
+const SNAP_COUNT = LYRIC_CUES.filter(c => c.snap).length;
+
+phoneUrlEl.textContent = `${location.protocol}//${location.hostname}:${location.port || '80'}`;
+
+function getBlurPx() {
+  return parseInt(blurRange.value, 10);
+}
+
+function updateBlurLabel() {
+  blurValueEl.textContent = getBlurPx();
+}
+
+function initBlurControl() {
+  const saved = localStorage.getItem('fkb-blur');
+  if (saved !== null) {
+    const v = Math.min(22, Math.max(2, parseInt(saved, 10)));
+    if (!isNaN(v)) blurRange.value = v;
+  }
+  updateBlurLabel();
+}
+
+blurRange.addEventListener('input', () => {
+  localStorage.setItem('fkb-blur', blurRange.value);
+  updateBlurLabel();
+  if (peaceActive) applyBlur(getBlurPx());
+});
+
+function openModal(title, renderFn) {
+  modalTitle.textContent = title;
+  modalBody.innerHTML = '';
+  renderFn(modalBody);
+  modalBackdrop.classList.remove('hidden');
+  requestAnimationFrame(() => modalBackdrop.classList.add('show'));
+  modalBackdrop.setAttribute('aria-hidden', 'false');
+}
+
+function closeModal() {
+  modalBackdrop.classList.remove('show');
+  modalBackdrop.setAttribute('aria-hidden', 'true');
+  setTimeout(() => modalBackdrop.classList.add('hidden'), 300);
+}
+
+function selectTheme(id) {
+  selectedThemeId = id;
+  localStorage.setItem('fkb-theme', selectedThemeId);
+  updateThemeHint();
+  updateToolbarLabels();
+  closeModal();
+}
+
+async function selectCamera(deviceId) {
+  selectedDeviceId = deviceId;
+  localStorage.setItem('fkb-camera', selectedDeviceId);
+  updateToolbarLabels();
+  closeModal();
+  try { await startCamera(selectedDeviceId); }
+  catch (e) { alert('Gagal ganti kamera: ' + e.message); }
+}
+
+function themeSwatchStyle(theme) {
+  if (!theme.strip) {
+    return 'background: linear-gradient(135deg, #c9b3ff, #f4a8c8, #88d4b8, #d4b8ff);';
+  }
+  const c = theme.strip;
+  return `background: linear-gradient(145deg, ${c[0]}, ${c[1]}, ${c[2] || c[1]});`;
+}
+
+function renderThemeModal(container) {
+  const desc = document.createElement('p');
+  desc.className = 'modal-desc';
+  desc.textContent = 'Pilih gaya strip photobooth. Setiap sesi pakai tema yang kamu pilih.';
+  container.appendChild(desc);
+
+  const grid = document.createElement('div');
+  grid.className = 'theme-grid';
+
+  const addCard = (id, icon, name, deco, style) => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'theme-card' + (selectedThemeId === id ? ' selected' : '');
+    card.innerHTML = `
+      <span class="check">✓</span>
+      <div class="theme-swatch" style="${style}"></div>
+      <div class="t-name"><span class="t-icon">${icon}</span>${name}</div>
+      <div class="t-deco">${deco}</div>`;
+    card.addEventListener('click', () => selectTheme(id));
+    grid.appendChild(card);
+  };
+
+  addCard('random', '🎲', 'Acak', 'Tema beda tiap sesi',
+    'background: linear-gradient(135deg, #c9b3ff 0%, #f4a8c8 33%, #a78bfa 66%, #88d4b8 100%);');
+  STRIP_THEMES.forEach((t) => {
+    addCard(t.id, THEME_ICONS[t.id] || '✨', t.name, t.emojis.join(' '), themeSwatchStyle(t));
+  });
+
+  container.appendChild(grid);
+}
+
+function renderCameraModal(container) {
+  const desc = document.createElement('p');
+  desc.className = 'modal-desc';
+  desc.textContent = 'Pilih sumber kamera untuk photobooth.';
+  container.appendChild(desc);
+
+  const list = document.createElement('div');
+  list.className = 'camera-list';
+  cameraList.forEach((cam, i) => {
+    let label = cam.label || `Kamera ${i + 1}`;
+    const icon = /iriun/i.test(label) ? '📱' : '📷';
+    if (/iriun/i.test(label)) label = label.replace(/^📱\s*/, '');
+
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'camera-item' + (cam.deviceId === selectedDeviceId ? ' selected' : '');
+    item.innerHTML = `
+      <span class="cam-icon">${icon}</span>
+      <span class="cam-label">${label}</span>
+      <span class="cam-check">${cam.deviceId === selectedDeviceId ? '✓' : ''}</span>`;
+    item.addEventListener('click', () => selectCamera(cam.deviceId));
+    list.appendChild(item);
+  });
+  container.appendChild(list);
+}
+
+function updateToolbarLabels() {
+  const themeLabel = selectedThemeId === 'random'
+    ? 'acak'
+    : getStripThemeById(selectedThemeId).name.split(' ')[0];
+  themeBtnLabel.textContent = themeLabel;
+  themeBtn.classList.toggle('active', selectedThemeId !== 'random');
+
+  const cam = cameraList.find(c => c.deviceId === selectedDeviceId);
+  let camName = cam?.label || 'kamera';
+  if (/iriun/i.test(camName)) camName = 'iPhone';
+  else camName = camName.split('(')[0].trim().slice(0, 12);
+  cameraBtnLabel.textContent = camName || 'kamera';
+}
+
+cameraBtn.addEventListener('click', () => openModal('Pilih Kamera', renderCameraModal));
+themeBtn.addEventListener('click', () => openModal('Pilih Tema Strip', renderThemeModal));
+modalClose.addEventListener('click', closeModal);
+modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && modalBackdrop.classList.contains('show')) closeModal();
+});
+
+volRange.addEventListener('input', () => {
+  bgm.volume = parseInt(volRange.value, 10) / 100;
+});
+
+musicBtn.addEventListener('click', () => {
+  musicOn = !musicOn;
+  musicBtn.classList.toggle('active', musicOn);
+  if (musicOn) bgm.play().catch(() => {});
+  else bgm.pause();
+});
+
+uploadAudioBtn.addEventListener('click', () => audioFileInput.click());
+
+audioFileInput.addEventListener('change', () => {
+  const file = audioFileInput.files?.[0];
+  if (!file) return;
+  bgm.src = URL.createObjectURL(file);
+  bgm.load();
+  if (musicOn) bgm.play().catch(() => {});
+  audioHintBase = '🎵 ' + file.name;
+  updateThemeHint();
+});
+
+snapBtn.addEventListener('click', () => snapPhoto());
+
+function applyBlur(px) {
+  video.style.filter = `blur(${px}px) saturate(0.85) brightness(0.92)`;
+}
+
+function fingerUp(hand, tip, pip) {
+  const t = hand[tip], p = hand[pip], w = hand[0];
+  if (t.y < p.y - 0.015) return true;
+  const tipD = Math.hypot(t.x - w.x, t.y - w.y);
+  const pipD = Math.hypot(p.x - w.x, p.y - w.y);
+  return tipD > pipD * 1.05;
+}
+
+function isPeace(hand) {
+  return fingerUp(hand, 8, 6) && fingerUp(hand, 12, 10)
+    && !fingerUp(hand, 16, 14) && !fingerUp(hand, 20, 18);
+}
+
+function isOpenPalm(hand) {
+  const palm = hand[9];
+  const tips = [4, 8, 12, 16, 20];
+  const spreads = tips.map(i => Math.hypot(hand[i].x - palm.x, hand[i].y - palm.y));
+  const avgSpread = spreads.reduce((a, b) => a + b, 0) / tips.length;
+  let extended = 0;
+  for (const [tip, pip] of [[8, 6], [12, 10], [16, 14], [20, 18]]) {
+    if (fingerUp(hand, tip, pip)) extended++;
+  }
+  const thumbOut = spreads[0] > 0.06;
+  return extended >= 4 && thumbOut && avgSpread > 0.075;
+}
+
+function drawHand(hand, peace, palm) {
+  const pairs = [
+    [0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
+    [0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],
+    [0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17],
+  ];
+  const color = peace ? 'rgba(201,179,255,0.7)'
+    : palm ? 'rgba(184,212,255,0.65)' : 'rgba(255,255,255,0.25)';
+  ctx.strokeStyle = color;
+  ctx.lineWidth = (peace || palm) ? 3 : 2;
+  pairs.forEach(([a, b]) => {
+    ctx.beginPath();
+    ctx.moveTo((1 - hand[a].x) * canvas.width, hand[a].y * canvas.height);
+    ctx.lineTo((1 - hand[b].x) * canvas.width, hand[b].y * canvas.height);
+    ctx.stroke();
+  });
+}
+
+function clearLiveBlur() {
+  peaceActive = false;
+  video.classList.remove('blur');
+  video.style.filter = 'none';
+  if (!sessionActive) {
+    lyricEl.classList.remove('show');
+    lyricEl.classList.remove('session-mode');
+  }
+}
+
+function renderLyricHtml(text) {
+  if (!text) return '';
+  return text.replace(/blur/g, '<span class="hl">blur</span>');
+}
+
+function getCueAt(time) {
+  let cue = LYRIC_CUES[0];
+  for (const c of LYRIC_CUES) {
+    if (c.t <= time) cue = c;
+    else break;
+  }
+  return cue;
+}
+
+function setLyricText(text, sessionMode = sessionActive) {
+  lyricL1.innerHTML = renderLyricHtml(text || '');
+  if (sessionMode) {
+    lyricL2.textContent = '';
+  } else if (!text) {
+    lyricL2.textContent = 'kita pernah begitu dekat';
+  }
+}
+
+function updateLyricDisplay(time) {
+  const cue = getCueAt(time);
+  if (cue === currentLyricCue) return;
+  currentLyricCue = cue;
+  setLyricText(cue.text, sessionActive);
+}
+
+function setPeaceState(active) {
+  peaceActive = active;
+  if (active) {
+    video.classList.add('blur');
+    applyBlur(getBlurPx());
+    if (!sessionActive) setLyricText('foto kita blur', false);
+    lyricEl.classList.add('show');
+    statusEl.textContent = sessionActive ? '✌️ blur ~ (photobooth)' : '✌️ foto kita blur ~';
+    statusEl.className = 'peace';
+  } else {
+    clearLiveBlur();
+    if (sessionActive) {
+      statusEl.textContent = '📸 photobooth jalan…';
+      statusEl.className = 'session';
+    } else {
+      statusEl.textContent = '🖐️ buka 5 jari = photobooth';
+      statusEl.className = 'clear';
+    }
+  }
+}
+
+function stopSessionSync() {
+  if (sessionSyncRaf) {
+    cancelAnimationFrame(sessionSyncRaf);
+    sessionSyncRaf = null;
+  }
+}
+
+function stopMusic() {
+  musicOn = false;
+  musicBtn.classList.remove('active');
+  stopSessionSync();
+  bgm.loop = true;
+  bgm.pause();
+  bgm.currentTime = 0;
+}
+
+function endSessionCleanup() {
+  sessionActive = false;
+  snapping = false;
+  snapBusy = false;
+  snapBtn.disabled = false;
+  smoothPeace = 0;
+  openPalmSmooth = 0;
+  currentLyricCue = null;
+  sessionSnapImgs = [];
+  sessionPhotoUrls = [];
+  sessionStripTheme = null;
+  stopRecordFrameLoop();
+  recordingActive = false;
+  stopMusic();
+  clearLiveBlur();
+  lyricEl.classList.remove('session-mode');
+  sessionBanner.classList.remove('show');
+  countdownEl.classList.remove('show');
+  countdownEl.innerHTML = '';
+  sessionCooldownUntil = Date.now() + 8000;
+  statusEl.textContent = '✅ strip foto terunduh — turunkan tangan dulu';
+  statusEl.className = 'clear';
+}
+
+async function takeSyncedSnap(cue) {
+  if (snapBusy) return;
+  snapBusy = true;
+  statusEl.textContent = `📸 ${cue.text}`;
+  statusEl.className = 'session';
+  setLyricText(cue.text, true);
+  lyricEl.classList.remove('snap-pulse');
+  void lyricEl.offsetWidth;
+  lyricEl.classList.add('snap-pulse');
+  doFlash();
+  const slotIndex = sessionPhotoUrls.length;
+  const dataUrl = capturePhotoRaw(slotIndex);
+  sessionPhotoUrls.push({ url: dataUrl, caption: cue.text || '', index: slotIndex });
+  pushSnapToVideo(dataUrl);
+  snapBusy = false;
+}
+
+function runLyricSyncedSession() {
+  const fired = new Set();
+  const trackEnd = () => (bgm.duration && isFinite(bgm.duration) ? bgm.duration - 0.15 : 14.85);
+
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      stopSessionSync();
+      resolve();
+    };
+
+    const tick = () => {
+      if (!sessionActive || done) { finish(); return; }
+      const t = bgm.currentTime;
+      updateLyricDisplay(t);
+      lyricEl.classList.add('show', 'session-mode');
+
+      for (const cue of LYRIC_CUES) {
+        if (!cue.snap || fired.has(cue.t) || t < cue.t) continue;
+        fired.add(cue.t);
+        takeSyncedSnap(cue);
+      }
+
+      if (t >= trackEnd() || bgm.ended) { finish(); return; }
+      sessionSyncRaf = requestAnimationFrame(tick);
+    };
+
+    sessionSyncRaf = requestAnimationFrame(tick);
+    setTimeout(finish, 17000);
+  });
+}
+
+async function pulseBlur(ms = 200) {
+  const px = parseInt(blurRange.value, 10);
+  video.classList.add('blur');
+  applyBlur(px);
+  lyricEl.classList.add('show');
+  await wait(ms);
+  if (!peaceActive) clearLiveBlur();
+}
+
+function onResults(results) {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const tracked = results.multiHandLandmarks || [];
+  let peaceDetected = false;
+  let palmDetected = false;
+
+  for (const hand of tracked) {
+    const peace = isPeace(hand);
+    const palm = isOpenPalm(hand);
+    if (peace) peaceDetected = true;
+    if (palm) palmDetected = true;
+    if (!sessionActive) drawHand(hand, peace, palm);
+  }
+
+  smoothPeace = peaceDetected ? Math.min(1, smoothPeace + 0.35) : Math.max(0, smoothPeace - 0.25);
+  const wantPeace = smoothPeace > 0.45;
+  if (wantPeace !== peaceActive) setPeaceState(wantPeace);
+
+  openPalmSmooth = palmDetected ? Math.min(1, openPalmSmooth + 0.1) : Math.max(0, openPalmSmooth - 0.2);
+  if (openPalmSmooth < 0.12) palmMustRelease = false;
+
+  if (sessionActive) return;
+
+  if (openPalmSmooth > 0.72 && !snapping && !palmMustRelease
+      && Date.now() >= sessionCooldownUntil) {
+    palmMustRelease = true;
+    openPalmSmooth = 0;
+    startPhotoboothSession();
+    return;
+  }
+
+  if (!peaceActive) {
+    if (openPalmSmooth > 0.35) {
+      statusEl.textContent = palmMustRelease ? '👇 turunkan tangan dulu' : '🖐️ tahan… photobooth';
+      statusEl.className = 'palm';
+    } else if (!palmMustRelease) {
+      statusEl.textContent = '🖐️ buka 5 jari = photobooth';
+      statusEl.className = 'clear';
+    }
+  }
+}
+
+function wait(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+function doFlash() {
+  flashEl.classList.add('on');
+  flashUntil = performance.now() + 120;
+  setTimeout(() => flashEl.classList.remove('on'), 120);
+}
+
+function ensureAudioGraph() {
+  if (audioCtx) return;
+  audioCtx = new AudioContext();
+  const source = audioCtx.createMediaElementSource(bgm);
+  bgmRecordDest = audioCtx.createMediaStreamDestination();
+  source.connect(audioCtx.destination);
+  source.connect(bgmRecordDest);
+}
+
+function pickRecorderMime() {
+  const types = [
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+  ];
+  return types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+}
+
+function isVideoBlurred() {
+  if (sessionActive) return peaceActive;
+  return peaceActive || video.classList.contains('blur');
+}
+
+function drawLyricOnRecordCtx(text) {
+  if (!text) return;
+  const y = RECORD_H - 56;
+  recordCtx.font = 'italic 36px Georgia, serif';
+  recordCtx.textBaseline = 'bottom';
+  recordCtx.shadowColor = 'rgba(0,0,0,0.75)';
+  recordCtx.shadowBlur = 12;
+  const fullW = recordCtx.measureText(text).width;
+  let x = (RECORD_W - fullW) / 2;
+  const blurIdx = text.toLowerCase().indexOf('blur');
+  if (blurIdx === -1) {
+    recordCtx.textAlign = 'left';
+    recordCtx.fillStyle = 'rgba(255,255,255,0.95)';
+    recordCtx.fillText(text, x, y);
+  } else {
+    recordCtx.textAlign = 'left';
+    const pre = text.slice(0, blurIdx);
+    const blurWord = text.slice(blurIdx, blurIdx + 4);
+    const rest = text.slice(blurIdx + 4);
+    recordCtx.fillStyle = 'rgba(255,255,255,0.95)';
+    if (pre) { recordCtx.fillText(pre, x, y); x += recordCtx.measureText(pre).width; }
+    recordCtx.fillStyle = '#d4b8ff';
+    recordCtx.fillText(blurWord, x, y);
+    x += recordCtx.measureText(blurWord).width;
+    if (rest) {
+      recordCtx.fillStyle = 'rgba(255,255,255,0.95)';
+      recordCtx.fillText(rest, x, y);
+    }
+  }
+  recordCtx.shadowBlur = 0;
+}
+
+function drawSnapThumb(img, x, y, thumbW, thumbH) {
+  recordCtx.save();
+  recordCtx.shadowColor = 'rgba(0,0,0,0.35)';
+  recordCtx.shadowBlur = 12;
+  recordCtx.fillStyle = '#fff';
+  recordCtx.fillRect(x - 4, y - 4, thumbW + 8, thumbH + 8);
+  recordCtx.drawImage(img, x, y, thumbW, thumbH);
+  recordCtx.restore();
+}
+
+function drawSnapOverlays() {
+  if (!sessionSnapImgs.length) return;
+  const margin = 18;
+  const last = sessionSnapImgs[sessionSnapImgs.length - 1];
+  const isStrip = sessionSnapImgs.length === 1 && last.height > last.width * 1.2;
+
+  if (isStrip) {
+    const thumbW = Math.round(RECORD_W * 0.13);
+    const thumbH = Math.round(thumbW / (last.width / last.height));
+    drawSnapThumb(last, RECORD_W - margin - thumbW, RECORD_H - margin - thumbH, thumbW, thumbH);
+    return;
+  }
+
+  const thumbW = Math.round(RECORD_W * 0.15);
+  sessionSnapImgs.forEach((img, i) => {
+    const thumbH = Math.round(thumbW / (img.width / img.height));
+    const x = RECORD_W - margin - thumbW;
+    const y = RECORD_H - margin - thumbH - i * (thumbH + 8);
+    drawSnapThumb(img, x, y, thumbW, thumbH);
+  });
+}
+
+function renderRecordFrame() {
+  if (!recordingActive || video.readyState < 2) return;
+  const vw = video.videoWidth || RECORD_W;
+  const vh = video.videoHeight || RECORD_H;
+  const scale = Math.max(RECORD_W / vw, RECORD_H / vh);
+  const dw = vw * scale;
+  const dh = vh * scale;
+  const dx = (RECORD_W - dw) / 2;
+  const dy = (RECORD_H - dh) / 2;
+
+  recordCtx.save();
+  recordCtx.fillStyle = '#1a1228';
+  recordCtx.fillRect(0, 0, RECORD_W, RECORD_H);
+  recordCtx.translate(RECORD_W, 0);
+  recordCtx.scale(-1, 1);
+  if (isVideoBlurred()) {
+    recordCtx.filter = `blur(${getBlurPx()}px) saturate(0.85) brightness(0.92)`;
+  }
+  recordCtx.drawImage(video, dx, dy, dw, dh);
+  recordCtx.restore();
+
+  const cue = getCueAt(bgm.currentTime);
+  if (sessionActive && cue.text) drawLyricOnRecordCtx(cue.text);
+
+  drawSnapOverlays();
+
+  if (performance.now() < flashUntil) {
+    recordCtx.fillStyle = 'rgba(255,255,255,0.85)';
+    recordCtx.fillRect(0, 0, RECORD_W, RECORD_H);
+  }
+}
+
+function recordFrameLoop() {
+  if (!recordingActive) return;
+  renderRecordFrame();
+  recordRaf = requestAnimationFrame(recordFrameLoop);
+}
+
+async function startSessionRecording() {
+  ensureAudioGraph();
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+  recordCanvas.width = RECORD_W;
+  recordCanvas.height = RECORD_H;
+  sessionSnapImgs = [];
+  recordedChunks = [];
+
+  const mime = pickRecorderMime();
+  const canvasStream = recordCanvas.captureStream(30);
+  const tracks = [...canvasStream.getVideoTracks()];
+  const audioTracks = bgmRecordDest?.stream.getAudioTracks() || [];
+  if (audioTracks.length) tracks.push(audioTracks[0]);
+
+  const stream = new MediaStream(tracks);
+  mediaRecorder = mime
+    ? new MediaRecorder(stream, { mimeType: mime })
+    : new MediaRecorder(stream);
+
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size) recordedChunks.push(e.data);
+  };
+
+  recordingActive = true;
+  mediaRecorder.start(250);
+  recordFrameLoop();
+}
+
+function stopRecordFrameLoop() {
+  if (recordRaf) {
+    cancelAnimationFrame(recordRaf);
+    recordRaf = null;
+  }
+}
+
+function stopSessionRecording() {
+  stopRecordFrameLoop();
+  recordingActive = false;
+
+  return new Promise((resolve) => {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+      resolve(null);
+      return;
+    }
+    mediaRecorder.onstop = () => {
+      const type = mediaRecorder.mimeType || 'video/webm';
+      resolve(recordedChunks.length ? new Blob(recordedChunks, { type }) : null);
+      mediaRecorder = null;
+      recordedChunks = [];
+    };
+    try { mediaRecorder.stop(); }
+    catch { resolve(null); }
+  });
+}
+
+function pushSnapToVideo(dataUrl) {
+  const img = new Image();
+  img.onload = () => sessionSnapImgs.push(img);
+  img.src = dataUrl;
+}
+
+async function countdown(n, label) {
+  countdownEl.classList.add('show');
+  for (let i = n; i >= 1; i--) {
+    countdownEl.textContent = label ? `${i}` : i;
+    if (label) {
+      countdownEl.style.fontSize = '100px';
+      const sub = document.createElement('div');
+      sub.style.fontSize = '22px';
+      sub.style.marginTop = '12px';
+      sub.textContent = label;
+      countdownEl.innerHTML = `${i}<div style="font-size:22px;margin-top:12px;font-weight:400">${label}</div>`;
+    } else {
+      countdownEl.textContent = i;
+    }
+    await wait(1000);
+  }
+  countdownEl.innerHTML = label ? `📸<div style="font-size:22px;margin-top:12px;font-weight:400">mulai!</div>` : '✌️';
+  await wait(500);
+  countdownEl.classList.remove('show');
+  countdownEl.innerHTML = '';
+  countdownEl.style.fontSize = '';
+}
+
+const FRAME = {
+  photoW: 760,
+  padX: 36,
+  padTop: 36,
+  padBottom: 128,
+  bg: '#faf7f2',
+  accent: '#c9b3ff',
+  ink: '#3d2f52',
+  inkSub: '#8a7a9e',
+};
+
+const STRIP = {
+  width: 520,
+  padX: 28,
+  padTop: 52,
+  photoSlotH: 340,
+  photoGap: 18,
+  footerH: 130,
+  outerPad: 44,
+  sprocketW: 18,
+};
+
+const STRIP_THEMES = [
+  {
+    id: 'lavender', name: 'lavender dream',
+    strip: ['#fffbff', '#f4ecff', '#ebe2ff'],
+    outer: ['#e4d4f8', '#d0bcef', '#b8a0e8'],
+    accent: '#c9b3ff', accent2: '#8b6fc0', ink: '#3d2f52', inkSub: '#7a6894',
+    deco: 'stars', emojis: ['✨', '💜', '✌️', '~'],
+  },
+  {
+    id: 'blush', name: 'blush hour',
+    strip: ['#fff9fb', '#ffeff5', '#ffe4ee'],
+    outer: ['#f8d4e4', '#efb8ce', '#e898b8'],
+    accent: '#f4a8c8', accent2: '#d8789c', ink: '#4a2840', inkSub: '#9a6078',
+    deco: 'hearts', emojis: ['💗', '🌸', '✨', '~'],
+  },
+  {
+    id: 'film', name: 'film reel',
+    strip: ['#faf8f4', '#f2ede5', '#eae4da'],
+    outer: ['#d8cfc0', '#c4b8a4', '#a89880'],
+    accent: '#c4a882', accent2: '#8a7a62', ink: '#2e2820', inkSub: '#6a5e50',
+    deco: 'film', emojis: ['📸', '🎞️', '✌️', '~'],
+  },
+  {
+    id: 'midnight', name: 'midnight blur',
+    strip: ['#352a4a', '#2a2040', '#1f1835'],
+    outer: ['#5a4578', '#4a3568', '#3a2858'],
+    accent: '#d4b8ff', accent2: '#a78bfa', ink: '#f8f4ff', inkSub: '#c4b0e0',
+    deco: 'sparkle', dark: true, emojis: ['🌙', '✨', '💫', '✌️'],
+  },
+  {
+    id: 'mint', name: 'soft mint',
+    strip: ['#f6fffc', '#e8faf4', '#daf5ec'],
+    outer: ['#b8e8d8', '#98d8c4', '#78c8b0'],
+    accent: '#88d4b8', accent2: '#58b898', ink: '#1e4038', inkSub: '#4a8070',
+    deco: 'stars', emojis: ['🍃', '✨', '✌️', '~'],
+  },
+];
+
+const THEME_ICONS = { random: '🎲', lavender: '💜', blush: '💗', film: '🎞️', midnight: '🌙', mint: '🍃' };
+
+function pickStripTheme() {
+  return STRIP_THEMES[Math.floor(Math.random() * STRIP_THEMES.length)];
+}
+
+function getStripThemeById(id) {
+  return STRIP_THEMES.find(t => t.id === id) || STRIP_THEMES[0];
+}
+
+function resolveStripTheme() {
+  return selectedThemeId === 'random' ? pickStripTheme() : getStripThemeById(selectedThemeId);
+}
+
+function initThemePicker() {
+  if (!STRIP_THEMES.some(t => t.id === selectedThemeId) && selectedThemeId !== 'random') {
+    selectedThemeId = 'random';
+    localStorage.setItem('fkb-theme', 'random');
+  }
+  updateToolbarLabels();
+}
+
+function updateThemeHint() {
+  if (!audioHintBase) return;
+  const themeLabel = selectedThemeId === 'random'
+    ? 'acak'
+    : getStripThemeById(selectedThemeId).name;
+  audioHint.textContent = `${audioHintBase} · tema: ${themeLabel}`;
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  const rad = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(x, y, w, h, rad);
+    return;
+  }
+  ctx.moveTo(x + rad, y);
+  ctx.lineTo(x + w - rad, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rad);
+  ctx.lineTo(x + w, y + h - rad);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
+  ctx.lineTo(x + rad, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rad);
+  ctx.lineTo(x, y + rad);
+  ctx.quadraticCurveTo(x, y, x + rad, y);
+  ctx.closePath();
+}
+
+function fillGradient(ctx, x, y, w, h, colors, vertical = true) {
+  const g = vertical
+    ? ctx.createLinearGradient(x, y, x, y + h)
+    : ctx.createLinearGradient(x, y, x + w, y);
+  colors.forEach((c, i) => g.addColorStop(i / (colors.length - 1), c));
+  ctx.fillStyle = g;
+  ctx.fillRect(x, y, w, h);
+}
+
+function drawDotPattern(ctx, x, y, w, h, color, step = 14) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  ctx.fillStyle = color;
+  for (let py = y; py < y + h; py += step) {
+    for (let px = x + (py % (step * 2) ? step / 2 : 0); px < x + w; px += step) {
+      ctx.beginPath();
+      ctx.arc(px, py, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function drawFilmSprockets(ctx, sx, sy, sw, sh, color) {
+  const holeH = 12;
+  const gap = 22;
+  const holeW = 9;
+  ctx.fillStyle = color;
+  for (let y = sy + 16; y < sy + sh - 16; y += gap) {
+    roundRectPath(ctx, sx + 4, y, holeW, holeH, 2);
+    ctx.fill();
+    roundRectPath(ctx, sx + sw - holeW - 4, y, holeW, holeH, 2);
+    ctx.fill();
+  }
+}
+
+function drawStar(ctx, x, y, r, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.translate(x, y);
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a = (i * 4 * Math.PI) / 5 - Math.PI / 2;
+    const rad = i % 2 === 0 ? r : r * 0.42;
+    const px = Math.cos(a) * rad;
+    const py = Math.sin(a) * rad;
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawHeart(ctx, x, y, s, color) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  ctx.beginPath();
+  ctx.moveTo(0, 4);
+  ctx.bezierCurveTo(0, 0, -12, 0, -12, 8);
+  ctx.bezierCurveTo(-12, 14, 0, 20, 0, 24);
+  ctx.bezierCurveTo(0, 20, 12, 14, 12, 8);
+  ctx.bezierCurveTo(12, 0, 0, 0, 0, 4);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawScatterDeco(ctx, x, y, w, h, theme, seed) {
+  const spots = [
+    [0.08, 0.06], [0.92, 0.04], [0.05, 0.42], [0.94, 0.38],
+    [0.1, 0.72], [0.88, 0.68], [0.5, 0.02], [0.72, 0.92],
+  ];
+  const alpha = theme.dark ? 0.35 : 0.22;
+  spots.forEach(([fx, fy], i) => {
+    const px = x + w * fx;
+    const py = y + h * fy;
+    const rot = (seed + i) * 0.7;
+    const col = i % 2 ? theme.accent : theme.accent2;
+    ctx.save();
+    ctx.globalAlpha = alpha + (i % 3) * 0.08;
+    ctx.translate(px, py);
+    ctx.rotate(rot);
+    if (theme.deco === 'hearts') drawHeart(ctx, 0, 0, 0.55, col);
+    else if (theme.deco === 'stars' || theme.deco === 'sparkle') drawStar(ctx, 0, 0, 7 + (i % 3) * 2, col);
+    else if (theme.deco === 'film') {
+      ctx.fillStyle = col;
+      ctx.fillRect(-8, -5, 16, 10);
+      ctx.fillStyle = theme.dark ? '#111' : '#fff';
+      ctx.fillRect(-5, -2, 10, 4);
+    }
+    ctx.restore();
+  });
+}
+
+function drawWashiTape(ctx, x, y, w, angle, color) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.globalAlpha = 0.72;
+  ctx.fillStyle = color;
+  ctx.fillRect(-w / 2, -7, w, 14);
+  ctx.globalAlpha = 0.25;
+  ctx.strokeStyle = '#fff';
+  ctx.setLineDash([4, 6]);
+  ctx.strokeRect(-w / 2 + 2, -5, w - 4, 10);
+  ctx.restore();
+}
+
+function drawSlotBadge(ctx, x, y, num, theme) {
+  const label = String(num).padStart(2, '0');
+  ctx.save();
+  ctx.fillStyle = theme.dark ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.88)';
+  ctx.strokeStyle = theme.accent;
+  ctx.lineWidth = 2;
+  roundRectPath(ctx, x, y, 38, 26, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = theme.ink;
+  ctx.font = 'bold 13px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x + 19, y + 13);
+  ctx.restore();
+}
+
+function drawSlotCaptionSticker(ctx, x, y, text, theme) {
+  if (!text || text.toLowerCase().includes('blur')) return;
+  ctx.save();
+  ctx.font = 'italic 11px Georgia, serif';
+  const tw = Math.min(ctx.measureText(text).width + 20, 200);
+  ctx.fillStyle = theme.dark ? 'rgba(212,184,255,0.25)' : 'rgba(201,179,255,0.35)';
+  ctx.strokeStyle = theme.accent;
+  ctx.lineWidth = 1;
+  roundRectPath(ctx, x - tw, y - 14, tw, 22, 6);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = theme.ink;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  const shown = text.length > 28 ? text.slice(0, 26) + '…' : text;
+  ctx.fillText(shown, x - 10, y - 3);
+  ctx.restore();
+}
+
+function drawPhotoIntoFrame(blurred) {
+  const { photoW, padX, padTop } = FRAME;
+  const vw = video.videoWidth || 1280;
+  const vh = video.videoHeight || 720;
+  const photoH = Math.round(photoW * vh / vw);
+  const px = getBlurPx();
+
+  captureCtx.save();
+  captureCtx.beginPath();
+  captureCtx.rect(padX, padTop, photoW, photoH);
+  captureCtx.clip();
+  captureCtx.translate(padX + photoW, padTop);
+  captureCtx.scale(-1, 1);
+  if (blurred) {
+    captureCtx.filter = `blur(${px}px) saturate(0.85) brightness(0.92)`;
+  }
+  captureCtx.drawImage(video, 0, 0, photoW, photoH);
+  captureCtx.restore();
+
+  captureCtx.strokeStyle = 'rgba(255,255,255,0.4)';
+  captureCtx.lineWidth = 2;
+  captureCtx.strokeRect(padX + 1, padTop + 1, photoW - 2, photoH - 2);
+  return photoH;
+}
+
+function drawPhotoboothFrameDecor(outW, outH, photoH, captionMain, captionSub) {
+  const { padX, padTop, padBottom, bg, accent, ink, inkSub } = FRAME;
+
+  captureCtx.fillStyle = bg;
+  captureCtx.fillRect(0, 0, outW, outH);
+
+  const bar = captureCtx.createLinearGradient(0, 0, outW, 0);
+  bar.addColorStop(0, '#b8a0e8');
+  bar.addColorStop(0.5, accent);
+  bar.addColorStop(1, '#b8a0e8');
+  captureCtx.fillStyle = bar;
+  captureCtx.fillRect(0, 0, outW, 8);
+
+  captureCtx.strokeStyle = '#e5ddd2';
+  captureCtx.lineWidth = 1;
+  captureCtx.strokeRect(0.5, 0.5, outW - 1, outH - 1);
+
+  captureCtx.save();
+  captureCtx.shadowColor = 'rgba(61,47,82,0.18)';
+  captureCtx.shadowBlur = 18;
+  captureCtx.shadowOffsetY = 6;
+  captureCtx.fillStyle = '#ddd6cc';
+  captureCtx.fillRect(padX - 2, padTop - 2, FRAME.photoW + 4, photoH + 4);
+  captureCtx.restore();
+
+  const captionTop = padTop + photoH + 20;
+  captureCtx.strokeStyle = 'rgba(201,179,255,0.45)';
+  captureCtx.lineWidth = 1;
+  captureCtx.beginPath();
+  captureCtx.moveTo(padX + 16, captionTop);
+  captureCtx.lineTo(outW - padX - 16, captionTop);
+  captureCtx.stroke();
+
+  captureCtx.textAlign = 'center';
+  captureCtx.fillStyle = ink;
+  captureCtx.font = 'italic 28px Georgia, serif';
+  captureCtx.fillText(captionMain, outW / 2, captionTop + 44);
+
+  if (captionSub) {
+    captureCtx.fillStyle = inkSub;
+    captureCtx.font = '13px system-ui, sans-serif';
+    captureCtx.fillText(captionSub, outW / 2, captionTop + 72);
+  }
+
+  captureCtx.font = '18px Georgia, serif';
+  captureCtx.fillStyle = 'rgba(201,179,255,0.55)';
+  captureCtx.fillText('~', outW / 2, outH - 22);
+}
+
+function captureFrame() {
+  const vw = video.videoWidth || 1280;
+  const vh = video.videoHeight || 720;
+  const photoH = Math.round(FRAME.photoW * vh / vw);
+  const outW = FRAME.photoW + FRAME.padX * 2;
+  const outH = photoH + FRAME.padTop + FRAME.padBottom;
+  const blurred = peaceActive;
+
+  captureCanvas.width = outW;
+  captureCanvas.height = outH;
+
+  const lyricLine = lyricL1.textContent.replace(/\s+/g, ' ').trim();
+  const captionMain = 'foto kita blur ~';
+  const captionSub = lyricLine && !lyricLine.toLowerCase().includes('blur')
+    ? lyricLine
+    : (sessionActive ? '' : 'photobooth');
+
+  drawPhotoboothFrameDecor(outW, outH, photoH, captionMain, captionSub);
+  drawPhotoIntoFrame(blurred);
+
+  return captureCanvas.toDataURL('image/jpeg', 0.92);
+}
+
+function capturePhotoRaw(slotIndex = 0) {
+  const slotW = STRIP.width - STRIP.padX * 2 - STRIP.sprocketW * 2;
+  const slotH = STRIP.photoSlotH;
+  const blurred = peaceActive;
+  const px = getBlurPx();
+
+  captureCanvas.width = slotW;
+  captureCanvas.height = slotH;
+  captureCtx.fillStyle = '#111';
+  captureCtx.fillRect(0, 0, slotW, slotH);
+
+  const vw = video.videoWidth || 1280;
+  const vh = video.videoHeight || 720;
+  const scale = Math.max(slotW / vw, slotH / vh);
+  const dw = vw * scale;
+  const dh = vh * scale;
+  const dx = (slotW - dw) / 2;
+  const dy = (slotH - dh) / 2;
+
+  captureCtx.save();
+  captureCtx.beginPath();
+  captureCtx.rect(0, 0, slotW, slotH);
+  captureCtx.clip();
+  captureCtx.translate(slotW, 0);
+  captureCtx.scale(-1, 1);
+  if (blurred) {
+    captureCtx.filter = `blur(${px}px) saturate(0.88) brightness(0.94) contrast(1.04)`;
+  } else {
+    captureCtx.filter = 'saturate(1.08) contrast(1.02)';
+  }
+  captureCtx.drawImage(video, dx, dy, dw, dh);
+  captureCtx.restore();
+
+  const tints = [
+    'rgba(201,179,255,0.12)',
+    'rgba(244,168,200,0.1)',
+    'rgba(196,168,130,0.1)',
+    'rgba(167,139,250,0.14)',
+    'rgba(136,212,184,0.1)',
+  ];
+  captureCtx.fillStyle = tints[slotIndex % tints.length];
+  captureCtx.fillRect(0, 0, slotW, slotH);
+
+  const vig = captureCtx.createRadialGradient(
+    slotW / 2, slotH / 2, slotH * 0.2,
+    slotW / 2, slotH / 2, slotH * 0.85,
+  );
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, 'rgba(20,10,40,0.28)');
+  captureCtx.fillStyle = vig;
+  captureCtx.fillRect(0, 0, slotW, slotH);
+
+  return captureCanvas.toDataURL('image/jpeg', 0.93);
+}
+
+function drawPhotoCover(ctx, img, x, y, w, h, theme, slotIndex, caption) {
+  const pad = 5;
+  const ix = x + pad;
+  const iy = y + pad;
+  const iw = w - pad * 2;
+  const ih = h - pad * 2;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.2)';
+  ctx.shadowBlur = 14;
+  ctx.shadowOffsetY = 5;
+  fillGradient(ctx, x, y, w, h, [theme.accent, theme.accent2], false);
+  ctx.restore();
+
+  const scale = Math.max(iw / img.width, ih / img.height);
+  const dw = img.width * scale;
+  const dh = img.height * scale;
+  const dx = ix + (iw - dw) / 2;
+  const dy = iy + (ih - dh) / 2;
+
+  ctx.save();
+  roundRectPath(ctx, ix, iy, iw, ih, 4);
+  ctx.clip();
+  ctx.drawImage(img, dx, dy, dw, dh);
+  ctx.restore();
+
+  ctx.strokeStyle = theme.dark ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.65)';
+  ctx.lineWidth = 2;
+  roundRectPath(ctx, ix, iy, iw, ih, 4);
+  ctx.stroke();
+
+  drawSlotBadge(ctx, x + 10, y + 10, slotIndex + 1, theme);
+  drawSlotCaptionSticker(ctx, x + w - 8, y + h - 12, caption, theme);
+
+  if (slotIndex === 0) {
+    drawWashiTape(ctx, x + w * 0.2, y - 4, 64, -0.35, theme.accent);
+  } else {
+    drawWashiTape(ctx, x + w * 0.78, y + h + 4, 58, 0.4, theme.accent2);
+  }
+}
+
+function formatStripDate() {
+  return new Date().toLocaleDateString('id-ID', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  });
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+async function buildPhotoStrip(shots) {
+  if (!shots.length) return null;
+
+  const theme = sessionStripTheme || pickStripTheme();
+  const items = shots.map(s => typeof s === 'string' ? { url: s, caption: '' } : s);
+  const images = await Promise.all(items.map(s => loadImage(s.url)));
+  const seed = items.length * 7 + (theme.id.length * 3);
+
+  const { width, padX, padTop, photoSlotH, photoGap, footerH, outerPad, sprocketW } = STRIP;
+  const slotW = width - padX * 2 - sprocketW * 2;
+  const stripH = padTop + photoSlotH * images.length + photoGap * (images.length - 1) + footerH;
+  const outW = width + outerPad * 2;
+  const outH = stripH + outerPad * 2;
+  const sx = outerPad;
+  const sy = outerPad;
+
+  const stripCanvas = document.createElement('canvas');
+  stripCanvas.width = outW;
+  stripCanvas.height = outH;
+  const sctx = stripCanvas.getContext('2d');
+
+  fillGradient(sctx, 0, 0, outW, outH, theme.outer);
+  drawDotPattern(sctx, 0, 0, outW, outH, theme.dark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.35)', 18);
+
+  sctx.save();
+  sctx.shadowColor = 'rgba(0,0,0,0.28)';
+  sctx.shadowBlur = 32;
+  sctx.shadowOffsetY = 12;
+  fillGradient(sctx, sx, sy, width, stripH, theme.strip);
+  sctx.restore();
+
+  drawDotPattern(sctx, sx, sy, width, stripH, theme.dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', 12);
+  drawScatterDeco(sctx, sx, sy, width, stripH, theme, seed);
+
+  fillGradient(sctx, sx, sy, width, 38, [theme.accent, theme.accent2], false);
+  sctx.fillStyle = theme.dark ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.92)';
+  sctx.font = '600 11px system-ui, sans-serif';
+  sctx.textAlign = 'center';
+  sctx.textBaseline = 'middle';
+  sctx.fillText(`✌️  ${theme.name.toUpperCase()}  ·  PHOTOBOOTH`, sx + width / 2, sy + 19);
+
+  if (theme.deco === 'film') drawFilmSprockets(sctx, sx, sy, width, stripH, theme.dark ? '#0e0a18' : '#d8d0c4');
+
+  sctx.strokeStyle = theme.dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+  sctx.lineWidth = 2;
+  sctx.strokeRect(sx + 1, sy + 1, width - 2, stripH - 2);
+
+  const ox = sx + padX + sprocketW;
+  let y = sy + padTop;
+  images.forEach((img, i) => {
+    drawPhotoCover(sctx, img, ox, y, slotW, photoSlotH, theme, i, items[i].caption);
+    if (i < images.length - 1) {
+      const divY = y + photoSlotH + photoGap / 2;
+      sctx.setLineDash([6, 5]);
+      sctx.strokeStyle = theme.accent;
+      sctx.globalAlpha = 0.45;
+      sctx.beginPath();
+      sctx.moveTo(ox + 20, divY);
+      sctx.lineTo(ox + slotW - 20, divY);
+      sctx.stroke();
+      sctx.setLineDash([]);
+      sctx.globalAlpha = 1;
+    }
+    y += photoSlotH + photoGap;
+  });
+
+  const footerTop = sy + padTop + photoSlotH * images.length + photoGap * (images.length - 1);
+  const footerY = footerTop + 42;
+  const captions = items.map(s => s.caption).filter(c => c && !c.toLowerCase().includes('blur'));
+
+  sctx.strokeStyle = theme.accent;
+  sctx.globalAlpha = 0.5;
+  sctx.lineWidth = 1;
+  sctx.beginPath();
+  sctx.moveTo(sx + width * 0.22, footerTop + 14);
+  sctx.lineTo(sx + width * 0.78, footerTop + 14);
+  sctx.stroke();
+  drawStar(sctx, sx + width * 0.2, footerTop + 14, 5, theme.accent);
+  drawStar(sctx, sx + width * 0.8, footerTop + 14, 5, theme.accent2);
+  sctx.globalAlpha = 1;
+
+  sctx.textAlign = 'center';
+  sctx.fillStyle = theme.ink;
+  sctx.font = 'italic 30px Georgia, serif';
+  sctx.fillText('foto kita', outW / 2, footerY);
+  sctx.font = 'bold 34px Georgia, serif';
+  sctx.fillStyle = theme.accent2;
+  sctx.fillText('blur ~', outW / 2, footerY + 36);
+
+  sctx.fillStyle = theme.inkSub;
+  sctx.font = '12px system-ui, sans-serif';
+  sctx.fillText(formatStripDate(), outW / 2, footerY + 58);
+
+  if (captions.length) {
+    sctx.font = 'italic 13px Georgia, serif';
+    sctx.fillStyle = theme.inkSub;
+    const lyricLine = captions.join('  ·  ');
+    sctx.fillText(lyricLine, outW / 2, footerY + 78);
+  }
+
+  const emojiRow = theme.emojis.join('  ');
+  sctx.font = '15px system-ui, sans-serif';
+  sctx.fillStyle = theme.dark ? theme.accent : theme.accent2;
+  sctx.fillText(emojiRow, outW / 2, sy + stripH - 22);
+
+  return stripCanvas.toDataURL('image/jpeg', 0.95);
+}
+
+function downloadDataUrl(dataUrl, filename) {
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
+}
+
+function addStripToGallery(dataUrl) {
+  shotCount++;
+  if (shotCount === 1) {
+    galleryPanel.classList.remove('hidden');
+    const title = document.createElement('div');
+    title.className = 'g-title';
+    title.textContent = 'photobooth';
+    galleryPanel.appendChild(title);
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'shot strip-shot';
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.alt = 'foto-strip';
+  const dl = document.createElement('div');
+  dl.className = 'dl';
+  dl.textContent = '↓ 2 foto';
+  wrap.appendChild(img);
+  wrap.appendChild(dl);
+
+  wrap.addEventListener('click', () => {
+    downloadDataUrl(dataUrl, 'foto-kita-blur-strip.jpg');
+  });
+
+  galleryPanel.insertBefore(wrap, galleryPanel.children[1] || null);
+}
+
+function addToGallery(dataUrl) {
+  shotCount++;
+  if (shotCount === 1) {
+    galleryPanel.classList.remove('hidden');
+    const title = document.createElement('div');
+    title.className = 'g-title';
+    title.textContent = 'photobooth';
+    galleryPanel.appendChild(title);
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'shot';
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  img.alt = `foto-${shotCount}`;
+  const dl = document.createElement('div');
+  dl.className = 'dl';
+  dl.textContent = '↓ simpan';
+  wrap.appendChild(img);
+  wrap.appendChild(dl);
+
+  const fname = `foto-kita-blur-${shotCount}.jpg`;
+  wrap.addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = fname;
+    a.click();
+  });
+
+  galleryPanel.insertBefore(wrap, galleryPanel.children[1] || null);
+}
+
+function addVideoToGallery(blob) {
+  const url = URL.createObjectURL(blob);
+  if (shotCount === 0) {
+    galleryPanel.classList.remove('hidden');
+    const title = document.createElement('div');
+    title.className = 'g-title';
+    title.textContent = 'photobooth';
+    galleryPanel.appendChild(title);
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'shot video-shot';
+  const vid = document.createElement('video');
+  vid.src = url;
+  vid.muted = true;
+  vid.playsInline = true;
+  vid.preload = 'metadata';
+  const dl = document.createElement('div');
+  dl.className = 'dl';
+  dl.textContent = '↓ video';
+  wrap.appendChild(vid);
+  wrap.appendChild(dl);
+
+  wrap.addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'foto-kita-blur-session.webm';
+    a.click();
+  });
+
+  galleryPanel.insertBefore(wrap, galleryPanel.children[1] || null);
+}
+
+async function snapPhoto() {
+  if (snapping || sessionActive || video.readyState < 2) return;
+  snapping = true;
+  snapBtn.disabled = true;
+  try {
+    await countdown(3);
+    doFlash();
+    addToGallery(captureFrame());
+  } finally {
+    snapping = false;
+    snapBtn.disabled = false;
+  }
+}
+
+async function startPhotoboothSession() {
+  if (sessionActive || snapping || video.readyState < 2) return;
+  sessionActive = true;
+  snapping = true;
+  snapBtn.disabled = true;
+  sessionPhotoUrls = [];
+  sessionStripTheme = resolveStripTheme();
+  clearLiveBlur();
+  statusEl.textContent = `⏳ photobooth · ${sessionStripTheme.name}…`;
+  statusEl.className = 'session';
+
+  try {
+    await countdown(3, 'photobooth');
+
+    musicOn = true;
+    musicBtn.classList.add('active');
+    bgm.loop = false;
+    bgm.currentTime = 0;
+    await bgm.play().catch(() => {});
+
+    lyricEl.classList.add('show', 'session-mode');
+    updateLyricDisplay(0);
+
+    try { await startSessionRecording(); }
+    catch (recErr) { console.warn('Rekam video gagal:', recErr); }
+
+    await runLyricSyncedSession();
+
+    if (sessionPhotoUrls.length) {
+      const strip = await buildPhotoStrip(sessionPhotoUrls);
+      if (strip) {
+        addStripToGallery(strip);
+        downloadDataUrl(strip, 'foto-kita-blur-strip.jpg');
+        const stripImg = new Image();
+        stripImg.onload = () => { sessionSnapImgs = [stripImg]; };
+        stripImg.src = strip;
+      }
+    }
+
+    const videoBlob = await stopSessionRecording();
+    if (videoBlob) addVideoToGallery(videoBlob);
+  } catch (e) {
+    console.error(e);
+    await stopSessionRecording();
+  } finally {
+    endSessionCleanup();
+  }
+}
+
+async function setupAudio() {
+  bgm.src = DEFAULT_AUDIO;
+  bgm.volume = parseInt(volRange.value, 10) / 100;
+
+  try {
+    const res = await fetch(DEFAULT_AUDIO, { method: 'HEAD' });
+    if (!res.ok) throw new Error('not found');
+    audioHintBase = '🎵 siap — buka 🖐️ 5 jari untuk play';
+    updateThemeHint();
+    musicBtn.classList.remove('active');
+    musicOn = false;
+  } catch {
+    audioHintBase = '⚠️ audio/foto-kita-blur.mp3 tidak ada';
+    audioHint.textContent = audioHintBase;
+    musicBtn.classList.remove('active');
+    musicOn = false;
+  }
+}
+
+async function listCameras() {
+  return (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+}
+
+async function populateCameraList() {
+  cameraList = await listCameras();
+  if (selectedDeviceId && cameraList.some(c => c.deviceId === selectedDeviceId)) {
+    /* keep */
+  } else if (cameraList.length) {
+    selectedDeviceId = cameraList[0].deviceId;
+    localStorage.setItem('fkb-camera', selectedDeviceId);
+  }
+  updateToolbarLabels();
+}
+
+async function startCamera(deviceId) {
+  if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+  const constraints = deviceId
+    ? { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+    : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } };
+  currentStream = await navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
+  video.srcObject = currentStream;
+  await new Promise(r => { video.onloadedmetadata = r; });
+  await video.play();
+}
+
+async function start() {
+  startBtn.disabled = true;
+  startBtn.textContent = 'Loading…';
+
+  try {
+    if (typeof Hands === 'undefined') {
+      throw new Error('MediaPipe Hands tidak termuat — jalankan lewat HTTP server.');
+    }
+
+    await startCamera(selectedDeviceId || undefined);
+    await populateCameraList();
+    initThemePicker();
+    initBlurControl();
+    await setupAudio();
+    ensureAudioGraph();
+
+    hands = new Hands({ locateFile: f => MEDIAPIPE_BASE + f });
+    hands.setOptions({
+      maxNumHands: 2,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.55,
+      minTrackingConfidence: 0.5,
+    });
+    hands.onResults(onResults);
+
+    const loop = async () => {
+      if (hands && video.readyState >= 2) await hands.send({ image: video });
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+
+    startScreen.classList.add('hidden');
+    hud.classList.remove('hidden');
+    toolbar.classList.remove('hidden');
+  } catch (e) {
+    console.error(e);
+    startBtn.disabled = false;
+    startBtn.textContent = 'Coba Lagi';
+    alert('Gagal start: ' + (e.name === 'NotAllowedError' ? 'Izinkan akses kamera.' : e.message));
+  }
+}
+
+startBtn.addEventListener('click', start);
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
+</script>
+</body>
+</html>

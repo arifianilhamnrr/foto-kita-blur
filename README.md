@@ -1,96 +1,50 @@
-# ✌️ Peace Blur Detector
+# foto kita blur ~
 
-A simple Computer Vision project that automatically blurs your webcam when a peace sign (✌️) is detected.
+Peace-sign blur + photobooth browser app, inspired by [Sal Priadi – *foto kita blur*](https://genius.com/Sal-priadi-foto-kita-blur-lyrics).
 
-Built using Python, OpenCV, and MediaPipe.
+Fork & extended from [claramiadevira/foto-kita-blur](https://github.com/claramiadevira/foto-kita-blur) (Python/OpenCV original).
 
 ## Features
 
-* Real-time webcam detection
-* Peace sign recognition
-* Automatic full-screen blur effect
-* Lightweight and beginner-friendly project
+- **✌️ Peace sign** → live blur + lirik
+- **🖐️ Buka 5 jari** → countdown → musik + photobooth otomatis
+- **2 jepret** sinkron lirik, digabung jadi **1 strip** photobooth
+- **Rekam video** sesi (~15 detik) + audio musik
+- **5 tema strip** (atau acak) — pilih lewat modal UI
+- **Blur manual** — slider ✌️, cuma aktif pas peace sign
+- Pilih kamera (termasuk iPhone/Iriun via WiFi)
+- Versi **Python/desktop** tetap ada (`blur.py`)
 
-## Installation
-
-Clone this repository:
+## Quick start (browser)
 
 ```bash
-git clone https://github.com/claramiadevira/foto-kita-blur.git
-cd peace-blur-detector
+git clone https://github.com/arifianilhamnrr/foto-kita-blur.git
+cd foto-kita-blur
+chmod +x serve.sh
+./serve.sh
 ```
 
-Install dependencies:
+Buka `http://localhost:8767` (atau IP laptop dari HP di WiFi yang sama).
+
+### Musik
+
+Taruh clip lagu di `audio/foto-kita-blur.mp3` (atau upload lewat UI 📁).
+
+## Python version
 
 ```bash
 pip install -r requirements.txt
-```
-
-## Run
-
-```bash
 python blur.py
 ```
 
-Press `ESC` to close the application.
+Model `hand_landmarker.task` diunduh otomatis saat pertama jalan.
 
-## Tech Stack
+## Tech
 
-* Python
-* OpenCV
-* MediaPipe
+- Browser: MediaPipe Hands (WASM), Canvas, MediaRecorder
+- Python: OpenCV, MediaPipe Tasks API
 
-## About Me
+## Credits
 
-Hi, I'm Clara 👋
-
-I'm a Data Analyst, Educator, and Content Creator who enjoys sharing practical projects, AI tools, and career insights.
-
-📷 Instagram: @claratwork
-
-I regularly post:
-
-* AI experiments
-* Python projects
-* Data Analytics tips
-* Career growth content
-
----
-
-## More From Me
-
-![Data Analytics Bootcamp](assets/bootcamp-poster.png)
-
-### Data Analytics Bootcamp for Beginners
-
-3 sessions. 1 dashboard. 1 Notion portfolio.
-
-Learn:
-
-* Data Preparation with Google Sheets
-* SQL with Google BigQuery
-* Dashboard Building with Looker Studio
-* Data Analysis with Claude AI
-
-🎁 Bonus Session
-
-Build a professional Notion portfolio that you can showcase on LinkedIn.
-
-Suitable for:
-
-* Fresh Graduates
-* University Students
-* Career Switchers
-
-📅 22, 24, 26 June
-⏰ 19:00 – 21:00 WIB
-
-🔗 Register:
-bit.ly/datawithclara
-
-📷 Instagram:
-@datawithclara
-
----
-
-If you found this project useful, feel free to star ⭐ the repository and follow me for more projects.
+- Original peace-blur concept: [Clara Miadevira](https://github.com/claramiadevira/foto-kita-blur)
+- Lagu: Sal Priadi – *foto kita blur*
