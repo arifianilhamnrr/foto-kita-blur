@@ -8,6 +8,5 @@ venv/
 *.h5
 *.pt
 hand_landmarker.task
-audio/*.mp3
 audio/*.m4a
 .DS_Store
