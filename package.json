@@ -1,0 +1,10 @@
+{
+  "name": "foto-kita-blur",
+  "private": true,
+  "scripts": {
+    "deploy": "bash scripts/deploy-cf.sh"
+  },
+  "devDependencies": {
+    "wrangler": "^4.14.0"
+  }
+}

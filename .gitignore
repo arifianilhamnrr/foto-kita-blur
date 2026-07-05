@@ -10,3 +10,6 @@ venv/
 hand_landmarker.task
 audio/*.m4a
 .DS_Store
+node_modules/
+dist/
+.wrangler/

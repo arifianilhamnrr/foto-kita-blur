@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.git/
+*.pyc
+hand_landmarker.task
+blur.py
+run.sh
+serve.sh
+requirements.txt
+assets/
+scripts/
+dist/
+node_modules/
+package-lock.json

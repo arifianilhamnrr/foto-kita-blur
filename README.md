@@ -2,6 +2,8 @@
 
 Photobooth webcam berbasis gesture — blur pas ✌️, musik, lirik, strip foto, dan video. Terinspirasi [*foto kita blur*](https://genius.com/Sal-priadi-foto-kita-blur-lyrics) oleh Sal Priadi.
 
+**Live:** [foto-kita-blur.arnr.dev](https://foto-kita-blur.arnr.dev)
+
 > Fork & pengembangan dari [claramiadevira/foto-kita-blur](https://github.com/claramiadevira/foto-kita-blur) (versi Python/OpenCV asli).
 
 ---
@@ -36,7 +38,13 @@ Selama photobooth: musik jalan, lirik muncul satu-satu, **2 foto** dijepret pas 
 
 ## Quick start
 
-### Browser (disarankan)
+### Online (tanpa install)
+
+Buka **[foto-kita-blur.arnr.dev](https://foto-kita-blur.arnr.dev)** → izinkan kamera & mulai.
+
+> Kamera iPhone lewat Iriun cuma jalan di jaringan lokal (WiFi sama), bukan lewat URL publik.
+
+### Browser lokal (disarankan untuk dev / Iriun)
 
 ```bash
 git clone https://github.com/arifianilhamnrr/foto-kita-blur.git
@@ -145,6 +153,15 @@ Kalau `vendor/` belum ada:
 chmod +x scripts/fetch-vendor.sh
 ./scripts/fetch-vendor.sh
 ```
+
+### Deploy (Cloudflare Pages)
+
+```bash
+npm install
+npm run deploy
+```
+
+Domain produksi: **foto-kita-blur.arnr.dev** (CNAME → `foto-kita-blur-3tj.pages.dev`).
 
 ---
 
